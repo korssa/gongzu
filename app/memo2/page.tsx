@@ -28,7 +28,6 @@ import { loadMemoDraft, saveMemoDraft, clearMemoDraft } from "@/lib/memo-storage
 import { GoogleTranslateWidget } from "@/components/google-translate-widget";
 import { useTranslationShield } from "@/hooks/use-translation-shield";
 import Link from "next/link";
-import SoftGlowStar from "@/components/soft-glow-star";
 
 export default function MemoPage() {
   const [contents, setContents] = useState<ContentItem[]>([]);
@@ -52,205 +51,7 @@ export default function MemoPage() {
   // 실시간 번역 피드백 감시 시스템 활성화
   useTranslationShield();
 
-  // 🌌 밤하늘 애니메이션 요소 생성 (Canvas 버전)
-  useEffect(() => {
-    // ========== Canvas Setup ==========
-    const canvas = document.getElementById('skyCanvas') as HTMLCanvasElement;
-    if (!canvas) return;
-    
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // 안전한 devicePixelRatio 처리
-    const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
-
-    function resizeCanvas() {
-      try {
-        if (!ctx) return;
-        canvas.width = Math.floor(canvas.clientWidth * dpr);
-        canvas.height = Math.floor(canvas.clientHeight * dpr);
-        ctx.scale(dpr, dpr);
-        updateStarPositions(); // 화면 크기 변경 시 별 위치 업데이트
-      } catch (error) {
-        console.warn('Canvas resize error:', error);
-      }
-    }
-    
-    // 초기화 지연
-    setTimeout(() => {
-      resizeCanvas();
-      window.addEventListener('resize', resizeCanvas);
-    }, 100);
-
-    // ========== Stars (twinkle) - 반응형 + 매우 느린 깜박임 ==========
-    const rand = (a: number, b: number) => a + Math.random() * (b - a);
-    let stars: Array<{
-      x: number; y: number; r: number; p: number; twinkleSpeed: number;
-      xPercent: number; yPercent: number; // 퍼센트 기반 위치 저장
-    }> = [];
-    // crossStars 배열 제거됨 - CSS Soft Glow Star로 대체
-
-    // 별과 십자별 초기화 함수
-    function initializeStars() {
-      stars = Array.from({ length: 300 }, () => {
-        const xPercent = Math.random();
-        const yPercent = Math.random();
-        return {
-          x: xPercent * canvas.width,
-          y: yPercent * canvas.height,
-          r: rand(0.8, 2.2),
-          p: Math.random() * Math.PI * 2,
-          twinkleSpeed: rand(0.0005, 0.002),
-          xPercent,
-          yPercent
-        };
-      });
-
-      // crossStars 초기화 제거됨 - CSS Soft Glow Star로 대체
-    }
-
-    // 화면 크기 변경 시 별 위치 재계산
-    function updateStarPositions() {
-      try {
-        stars.forEach(star => {
-          star.x = star.xPercent * canvas.width;
-          star.y = star.yPercent * canvas.height;
-          star.r = rand(0.8, 2.2);
-        });
-
-        // crossStars 위치 업데이트 제거됨 - CSS Soft Glow Star로 대체
-      } catch (error) {
-        console.warn('Star position update error:', error);
-      }
-    }
-
-    initializeStars();
-
-    // ========== Meteor (크기와 꼬리 개선) ==========
-    let meteor: { x: number; y: number; vx: number; vy: number; life: number; trail: Array<{x: number; y: number; life: number}> } | null = null;
-    let meteorTimer = 0;
-
-    // ========== Animation Loop ==========
-    let lastTime = 0;
-    function animate(currentTime: number) {
-      if (!ctx || !canvas) return;
-      
-      // 델타타임 계산 (프레임레이트 독립적)
-      const deltaTime = currentTime - lastTime;
-      lastTime = currentTime;
-      const deltaFactor = deltaTime / 16.67; // 60fps 기준 정규화
-      
-      try {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-      } catch (error) {
-        console.warn('Canvas clear error:', error);
-        return;
-      }
-      
-      // 일반 별들 그리기 (매우 느린 트윙클)
-      try {
-        stars.forEach(star => {
-          const twinkle = 0.3 + 0.7 * Math.sin(Date.now() * star.twinkleSpeed + star.p);
-          ctx.fillStyle = `rgba(255,255,255,${twinkle * 0.9})`;
-          ctx.beginPath();
-          ctx.arc(star.x, star.y, star.r, 0, Math.PI * 2);
-          ctx.fill();
-        });
-      } catch (error) {
-        console.warn('Star drawing error:', error);
-      }
-
-      // 십자별은 이제 CSS Soft Glow Star로 대체됨
-
-      // 유성 처리 (크기와 꼬리 개선)
-      try {
-        meteorTimer += deltaFactor;
-        if (meteorTimer > 600 && !meteor) { // 10초마다 유성 생성 (더 느리게, 델타타임 적용)
-          meteor = {
-            x: canvas.width * 0.9,
-            y: -30,
-            vx: -6,  // 속도 절반으로 감소
-            vy: 4,   // 속도 절반으로 감소
-            life: 1,
-            trail: []
-          };
-          meteorTimer = 0;
-        }
-
-      if (meteor) {
-        // 유성 이동 (델타타임 적용)
-        meteor.x += meteor.vx * deltaFactor;
-        meteor.y += meteor.vy * deltaFactor;
-        meteor.life -= 0.008 * deltaFactor; // 생명력 감소 속도 느리게, 델타타임 적용
-        
-        // 꼬리 추가 (더 자주, 더 길게)
-        meteor.trail.push({ x: meteor.x, y: meteor.y, life: 1 });
-        if (meteor.trail.length > 40) meteor.trail.shift(); // 꼬리 길이 증가
-        
-        // 꼬리 그리기 (더 긴 그라디언트)
-        meteor.trail.forEach((point, i) => {
-          const alpha = (point.life * i) / meteor!.trail.length;
-          const trailLength = 60; // 꼬리 길이 증가
-          const gradient = ctx.createLinearGradient(
-            point.x, point.y, 
-            point.x - trailLength, point.y + trailLength
-          );
-          gradient.addColorStop(0, `rgba(255,255,255,${alpha * 0.9})`);
-          gradient.addColorStop(0.3, `rgba(255,255,255,${alpha * 0.6})`);
-          gradient.addColorStop(1, 'rgba(255,255,255,0)');
-          
-          ctx.fillStyle = gradient;
-          ctx.fillRect(point.x - 2, point.y - 2, 4, 4);
-          point.life -= 0.08 * deltaFactor;
-        });
-        
-        // 유성 머리 그리기 (더 크게)
-        const headSize = 6 + (meteor.life * 2); // 크기 증가
-        ctx.fillStyle = `rgba(255,255,255,${meteor.life})`;
-        ctx.beginPath();
-        ctx.arc(meteor.x, meteor.y, headSize, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // 유성 머리 글로우 효과
-        ctx.shadowColor = 'rgba(255,255,255,0.8)';
-        ctx.shadowBlur = 10;
-        ctx.beginPath();
-        ctx.arc(meteor.x, meteor.y, headSize * 0.7, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.shadowBlur = 0;
-        
-        if (meteor.life <= 0 || meteor.x < -100) {
-          meteor = null;
-        }
-      }
-      } catch (error) {
-        console.warn('Meteor drawing error:', error);
-      }
-
-      requestAnimationFrame(animate);
-    }
-
-    // 애니메이션 시작을 지연시켜 안정성 향상
-    setTimeout(() => {
-      try {
-        animate(performance.now());
-      } catch (error) {
-        console.warn('Animation start error:', error);
-      }
-    }, 200);
-
-    // 야광충 삭제됨 - 십자별의 진짜 별 반짝임 효과로 대체
-
-    // 컴포넌트 언마운트 시 정리
-    return () => {
-      try {
-        window.removeEventListener('resize', resizeCanvas);
-        document.querySelectorAll('.glowbug').forEach(el => el.remove());
-      } catch (error) {
-        console.warn('Cleanup error:', error);
-      }
-    };
-  }, []);
+  // 테마 제거됨 - 메인 페이지로 이동
 
   // 위젯 토글 시 메모 저장 브로드캐스트 수신
   useEffect(() => {
@@ -533,106 +334,96 @@ export default function MemoPage() {
   // If content selected, show detail view
   if (selected) {
     return (
-      <div className="min-h-screen bg-black text-white relative">
-        {/* 🌌 GPTXGONGMYUNG MEMO - Night Sky Animation (Canvas ver.) */}
-        <style dangerouslySetInnerHTML={{
-          __html: `
-          /* 캔버스 테마 제거 */
-          
-          /* 달 제거됨 */
+      <div className="w-full space-y-6 px-4" onMouseEnter={blockTranslationFeedback}>
+        {/* 상단 버튼 */}
+        <Button 
+          onClick={() => {
+            setSelected(null);
+            // 상단으로 빠르게 스크롤
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }} 
+          variant="ghost" 
+          className="text-white hover:text-amber-400 transition-colors"
+          onMouseEnter={blockTranslationFeedback}
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          ← To the full list
+        </Button>
 
-          /* 야광충 삭제됨 - 십자별의 진짜 별 반짝임 효과로 대체 */
-
-          /* 메모 페이지 테마 제거 - 홈페이지에 영향 주지 않도록 */
-          
-        `}} />
-
-        
-        <div className="container mx-auto max-w-6xl px-4 relative z-10">
-          {/* Top Navigation */}
-          <div className="flex items-center justify-between mb-6">
-            <Link 
-              href="/"
-              className="flex items-center gap-2 text-white hover:text-amber-400 transition-colors"
-              onMouseEnter={blockTranslationFeedback}
-            >
-              <Home className="w-4 h-4" />
-              Home
-            </Link>
-            <Button 
-              onClick={() => {
-                setSelected(null);
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }} 
-              variant="ghost" 
-              className="text-white hover:text-amber-400 transition-colors"
-              onMouseEnter={blockTranslationFeedback}
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              ← Back to List
-            </Button>
-          </div>
-
-          <div className="w-full flex justify-center">
-            <div className="w-full max-w-2xl">
-              {/* Header Info */}
-              <div className="text-white border-b border-gray-600 pb-4 mb-6" onMouseEnter={blockTranslationFeedback}>
-                <h1 className="text-3xl font-bold mb-2" translate="no">{selected.title}</h1>
-                <div className="flex gap-4 text-sm text-gray-400">
-                  <span className="flex items-center gap-1">
-                    <User className="w-4 h-4" /> <span translate="no">{selected.author}</span>
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Calendar className="w-4 h-4" />
-                    {new Date(selected.publishDate).toLocaleDateString()}
-                  </span>
-                </div>
+        <div className="w-full flex justify-center">
+          <div className="w-full max-w-2xl">
+            {/* 헤더 정보 */}
+            <div className="text-white border-b border-gray-600 pb-4 mb-6" onMouseEnter={blockTranslationFeedback}>
+              <h1 className="text-3xl font-bold mb-2" translate="no">{selected.title}</h1>
+              <div className="flex gap-4 text-sm text-gray-400">
+                <span className="flex items-center gap-1">
+                  <User className="w-4 h-4" /> <span translate="no">{selected.author}</span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <Calendar className="w-4 h-4" />
+                  {new Date(selected.publishDate).toLocaleDateString()}
+                </span>
               </div>
+            </div>
 
-              {/* Main Content */}
-              <article className="text-left text-gray-300 leading-relaxed space-y-6" onMouseEnter={blockTranslationFeedback}>
-                {/* Place image at the beginning of content if available */}
-                {selected.imageUrl && (
-                  <div className="flex justify-start mb-6">
-                    <img
-                      src={selected.imageUrl}
-                      alt={selected.title}
-                      className="max-w-xs h-auto rounded shadow-lg"
-                      style={{ maxHeight: '300px' }}
-                    />
-                  </div>
-                )}
-
-                {/* Main Text */}
-                <pre
-                  className="whitespace-pre-wrap font-mono preserve-format"
-                  style={{
-                    whiteSpace: 'pre-wrap',
-                    wordBreak: 'keep-all',
-                    wordWrap: 'break-word',
-                    fontFamily: 'monospace'
-                  }}
-                >
-                  {selected.content}
-                </pre>
-              </article>
-
-              {/* Tags */}
-              {selected.tags && selected.tags.length > 0 && (
-                <div className="flex gap-2 flex-wrap mt-6 pt-4 border-t border-gray-600" onMouseEnter={blockTranslationFeedback}>
-                  {selected.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="px-3 py-1 bg-white text-black rounded-full text-sm"
-                    >
-                      #{tag}
-                    </span>
-                  ))}
+            {/* 본문 콘텐츠 */}
+            <article className="text-left text-gray-300 leading-relaxed space-y-6" onMouseEnter={blockTranslationFeedback}>
+              {/* 이미지가 있으면 본문 시작 부분에 배치 */}
+              {selected.imageUrl && (
+                <div className="flex justify-start mb-6">
+                  <img
+                    src={selected.imageUrl}
+                    alt={selected.title}
+                    className="max-w-xs h-auto rounded shadow-lg"
+                    style={{ maxHeight: '300px' }}
+                  />
                 </div>
               )}
-            </div>
+
+              {/* 본문 텍스트 */}
+              <pre
+                className="whitespace-pre-wrap font-mono preserve-format"
+                style={{
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'keep-all',
+                  wordWrap: 'break-word',
+                  fontFamily: 'monospace'
+                }}
+              >
+                {selected.content}
+              </pre>
+            </article>
+
+            {/* 태그 */}
+            {selected.tags && selected.tags.length > 0 && (
+              <div className="flex gap-2 flex-wrap mt-6 pt-4 border-t border-gray-600" onMouseEnter={blockTranslationFeedback}>
+                {selected.tags.map((tag, index) => (
+                  <span
+                    key={index}
+                    className="px-3 py-1 bg-white text-black rounded-full text-sm"
+                  >
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
+
+        {/* 하단 버튼 */}
+        <Button 
+          onClick={() => {
+            setSelected(null);
+            // 상단으로 빠르게 스크롤
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }} 
+          variant="ghost" 
+          className="text-white hover:text-amber-400 transition-colors"
+          onMouseEnter={blockTranslationFeedback}
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          ← To the full list
+        </Button>
       </div>
     );
   }
@@ -640,27 +431,10 @@ export default function MemoPage() {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white relative">
-        {/* 🌌 GPTXGONGMYUNG MEMO - Night Sky Animation (Canvas ver.) */}
-        <style dangerouslySetInnerHTML={{
-          __html: `
-          /* 캔버스 테마 제거 */
-          
-          /* 달 제거됨 */
-
-          /* 야광충 삭제됨 - 십자별의 진짜 별 반짝임 효과로 대체 */
-
-          /* 메모 페이지 테마 제거 - 홈페이지에 영향 주지 않도록 */
-          
-        `}} />
-
-        <SoftGlowStar />
-        
-        <div className="container mx-auto max-w-6xl px-4 relative z-10">
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-400 mx-auto"></div>
-            <p className="text-gray-400 mt-4">Loading memo2...</p>
-          </div>
+      <div className="w-full max-w-4xl mx-auto px-4">
+        <div className="text-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-400 mx-auto"></div>
+          <p className="text-gray-400 mt-4">메모2를 불러오는 중...</p>
         </div>
       </div>
     );
@@ -669,284 +443,93 @@ export default function MemoPage() {
   // Empty state
   if (contents.length === 0) {
     return (
-      <div className="min-h-screen bg-black text-white relative">
-        {/* 🌌 GPTXGONGMYUNG MEMO - Night Sky Animation (Canvas ver.) */}
-        <style dangerouslySetInnerHTML={{
-          __html: `
-          /* 캔버스 테마 제거 */
-          
-          /* 달 제거됨 */
-
-          /* 야광충 삭제됨 - 십자별의 진짜 별 반짝임 효과로 대체 */
-
-          /* 메모 페이지 테마 제거 - 홈페이지에 영향 주지 않도록 */
-          
-        `}} />
-
-        
-        <div className="container mx-auto max-w-6xl px-4 relative z-10">
-          {/* Top Navigation */}
-          <div className="flex items-center justify-between mb-6">
-            <Link 
-              href="/"
-              className="flex items-center gap-2 text-white hover:text-amber-400 transition-colors"
-              onMouseEnter={blockTranslationFeedback}
-            >
-              <Home className="w-4 h-4" />
-              Home
-            </Link>
-          </div>
-
-          <div className="text-center py-12">
-            <h3 className="text-xl font-semibold text-gray-300 mb-2">No memo2 yet</h3>
-            <p className="text-gray-400 mb-6">New memo2 will be added soon.</p>
+      <div className="w-full max-w-4xl mx-auto px-4">
+        <div className="text-center py-12">
+          <h3 className="text-xl font-semibold text-gray-300 mb-2">메모2가 없습니다</h3>
+          <p className="text-gray-400 mb-6">곧 새로운 메모2가 추가될 예정입니다.</p>
             
-            {/* Show add button only in admin mode */}
+          {/* 관리자 모드에서만 추가 버튼 표시 */}
           {isAuthenticated && (
             <div className="mt-6">
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} className="gap-2">
+                  <Button 
+                    onClick={resetForm}
+                    className="gap-2"
+                    onMouseEnter={blockTranslationFeedback}
+                  >
                     <Plus className="h-4 w-4" />
-                    Create New Memo2
+                    새 메모2 작성
                   </Button>
                 </DialogTrigger>
-                  <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle>
-                        {editingContent ? 'Edit Memo2' : 'Create New Memo2'}
-                      </DialogTitle>
-                      <DialogDescription>
-                        Create a new memo2.
-                      </DialogDescription>
-                    </DialogHeader>
-                    
-                    <div className="space-y-4">
-                      <div>
-                        <label htmlFor="memo-title" className="block text-sm font-medium mb-2">Title *</label>
-                        <Input
-                          id="memo-title"
-                          name="title"
-                          value={formData.title}
-                          onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                          placeholder="Enter title"
-                        />
-                      </div>
-
-                      <div>
-                        <label htmlFor="memo-author" className="block text-sm font-medium mb-2">Author *</label>
-                        <Input
-                          id="memo-author"
-                          name="author"
-                          value={formData.author}
-                          onChange={(e) => setFormData(prev => ({ ...prev, author: e.target.value }))}
-                          placeholder="Enter author name"
-                        />
-                      </div>
-
-                      <div>
-                        <label htmlFor="memo-content" className="block text-sm font-medium mb-2">Content *</label>
-                        <Textarea
-                          id="memo-content"
-                          name="content"
-                          value={formData.content}
-                          onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
-                          placeholder="Enter content"
-                          rows={10}
-                        />
-                      </div>
-
-                      <div>
-                        <label htmlFor="memo-tags" className="block text-sm font-medium mb-2">Tags</label>
-                        <Input
-                          id="memo-tags"
-                          name="tags"
-                          value={formData.tags}
-                          onChange={(e) => setFormData(prev => ({ ...prev, tags: e.target.value }))}
-                          placeholder="Enter tags separated by commas"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium mb-2">Featured Image (Optional)</label>
-                        <div className="space-y-2">
-                          <input
-                            id="image-upload"
-                            type="file"
-                            accept="image/*"
-                            onChange={handleImageSelect}
-                            className="hidden"
-                          />
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => document.getElementById('image-upload')?.click()}
-                              className="px-3 py-2 text-sm bg-gray-800 border border-gray-600 text-gray-300 hover:border-amber-400 rounded transition-colors"
-                            >
-                              Select Image
-                            </button>
-                            {selectedImage && (
-                              <button
-                                type="button"
-                                onClick={handleRemoveImage}
-                                className="px-3 py-2 text-sm bg-red-600 border border-red-600 text-white hover:bg-red-700 rounded transition-colors"
-                              >
-                                Remove
-                              </button>
-                            )}
-                          </div>
-                          {imagePreview && (
-                            <div className="mt-2">
-                              <img
-                                src={imagePreview}
-                                alt="Preview"
-                                className="w-32 h-32 object-cover rounded border"
-                              />
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          id="isPublished"
-                          checked={formData.isPublished}
-                          onChange={(e) => setFormData(prev => ({ ...prev, isPublished: e.target.checked }))}
-                        />
-                        <label htmlFor="isPublished" className="text-sm">
-                          Publish immediately
-                        </label>
-                      </div>
-                    </div>
-
-                    <DialogFooter>
-                      <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                        Cancel
-                      </Button>
-                      <Button onClick={handleSubmit}>
-                        {editingContent ? 'Update' : 'Save'}
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // List view
-  return (
-    <div className="min-h-screen bg-black text-white relative">
-      {/* 🌌 GPTXGONGMYUNG MEMO - Night Sky Animation (Canvas ver.) */}
-      <style dangerouslySetInnerHTML={{
-        __html: `
-          /* 캔버스 테마 제거 */
-          
-          /* 달 제거됨 */
-
-          /* 야광충 삭제됨 - 십자별의 진짜 별 반짝임 효과로 대체 */
-
-          /* 메모 페이지 테마 제거 - 홈페이지에 영향 주지 않도록 */
-          
-        `
-      }} />
-
-      <canvas id="skyCanvas"></canvas>
-      <div className="moon"></div>
-
-      <div className="container mx-auto py-6 max-w-6xl px-4 relative z-10">
-        {/* 구글 번역 위젯 */}
-        <div className="flex justify-end mb-4">
-          <GoogleTranslateWidget />
-        </div>
-
-        {/* HOME 버튼 */}
-        <div className="mb-6">
-          <Link 
-            href="/"
-            className="flex items-center gap-2 text-white hover:text-amber-400 transition-colors bg-black"
-            onMouseEnter={blockTranslationFeedback}
-          >
-            <Home className="w-4 h-4" />
-            Home
-          </Link>
-        </div>
-
-        {/* 슬로건 위치 - 밤하늘 애니메이션과 함께 */}
-        <div className="text-center relative z-10" style={{ padding: '1rem' }}>
-          <h2 className="text-2xl font-bold text-white mb-2 notranslate" translate="no" style={{ textShadow: '0 0 6px rgba(0,0,0,0.6)' }}>GPTXGONGMYUNG.COM</h2>
-          <p className="text-gray-400" style={{ textShadow: '0 0 6px rgba(0,0,0,0.6)' }}>Our 🌿Slogan</p>
-          <p className="text-gray-400 notranslate" translate="no" style={{ textShadow: '0 0 6px rgba(0,0,0,0.6)' }}>&quot;We&apos;re just. That kind of group!&quot;</p>
-        {isAuthenticated && (
-          <div className="mt-4">
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Create New Memo
-                </Button>
-              </DialogTrigger>
-                <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+                <DialogContent 
+                  className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto"
+                  onMouseEnter={blockTranslationFeedback}
+                >
                   <DialogHeader>
                     <DialogTitle>
-                      {editingContent ? 'Edit Memo' : 'Create New Memo'}
+                      {editingContent ? '메모2 수정' : '새 메모2 작성'}
                     </DialogTitle>
                     <DialogDescription>
-                      Create a new memo2.
+                      새로운 메모2를 작성하세요.
                     </DialogDescription>
                   </DialogHeader>
-                  
+                    
                   <div className="space-y-4">
-                    <div>
-                      <label htmlFor="memo-title-list" className="block text-sm font-medium mb-2">Title *</label>
+                    <div onMouseEnter={blockTranslationFeedback}>
+                      <label htmlFor="title" className="block text-sm font-medium mb-2">제목 *</label>
                       <Input
-                        id="memo-title-list"
+                        id="title"
+                        name="title"
                         value={formData.title}
                         onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                        placeholder="Enter title"
+                        placeholder="제목을 입력하세요"
+                        onMouseEnter={blockTranslationFeedback}
                       />
                     </div>
 
-                    <div>
-                      <label htmlFor="memo-author-list" className="block text-sm font-medium mb-2">Author *</label>
+                    <div onMouseEnter={blockTranslationFeedback}>
+                      <label htmlFor="author" className="block text-sm font-medium mb-2">작성자 *</label>
                       <Input
-                        id="memo-author-list"
+                        id="author"
+                        name="author"
                         value={formData.author}
                         onChange={(e) => setFormData(prev => ({ ...prev, author: e.target.value }))}
-                        placeholder="Enter author name"
+                        placeholder="작성자명을 입력하세요"
+                        onMouseEnter={blockTranslationFeedback}
                       />
                     </div>
 
-                    <div>
-                      <label htmlFor="memo-content-list" className="block text-sm font-medium mb-2">Content *</label>
+                    <div onMouseEnter={blockTranslationFeedback}>
+                      <label htmlFor="content" className="block text-sm font-medium mb-2">내용 *</label>
                       <Textarea
-                        id="memo-content-list"
+                        id="content"
+                        name="content"
                         value={formData.content}
                         onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
-                        placeholder="Enter content"
+                        placeholder="내용을 입력하세요 (마크다운 지원)"
                         rows={10}
+                        onMouseEnter={blockTranslationFeedback}
                       />
                     </div>
 
-                    <div>
-                      <label htmlFor="memo-tags-list" className="block text-sm font-medium mb-2">Tags</label>
+                    <div onMouseEnter={blockTranslationFeedback}>
+                      <label htmlFor="tags" className="block text-sm font-medium mb-2">태그</label>
                       <Input
-                        id="memo-tags-list"
+                        id="tags"
+                        name="tags"
                         value={formData.tags}
                         onChange={(e) => setFormData(prev => ({ ...prev, tags: e.target.value }))}
-                        placeholder="Enter tags separated by commas"
+                        placeholder="태그를 쉼표로 구분하여 입력하세요"
+                        onMouseEnter={blockTranslationFeedback}
                       />
                     </div>
 
                     <div>
-                      <label htmlFor="memo-image-list" className="block text-sm font-medium mb-2">Featured Image (Optional)</label>
+                      <label className="block text-sm font-medium mb-2">대표 이미지 (선택사항)</label>
                       <div className="space-y-2">
                         <input
-                          id="image-upload-list"
+                          id="image-upload"
                           type="file"
                           accept="image/*"
                           onChange={handleImageSelect}
@@ -955,10 +538,10 @@ export default function MemoPage() {
                         <div className="flex gap-2">
                           <button
                             type="button"
-                            onClick={() => document.getElementById('image-upload-list')?.click()}
+                            onClick={() => document.getElementById('image-upload')?.click()}
                             className="px-3 py-2 text-sm bg-gray-800 border border-gray-600 text-gray-300 hover:border-amber-400 rounded transition-colors"
                           >
-                            Select Image
+                            이미지 선택
                           </button>
                           {selectedImage && (
                             <button
@@ -966,7 +549,7 @@ export default function MemoPage() {
                               onClick={handleRemoveImage}
                               className="px-3 py-2 text-sm bg-red-600 border border-red-600 text-white hover:bg-red-700 rounded transition-colors"
                             >
-                                Remove
+                              제거
                             </button>
                           )}
                         </div>
@@ -974,7 +557,7 @@ export default function MemoPage() {
                           <div className="mt-2">
                             <img
                               src={imagePreview}
-                              alt="Preview"
+                              alt="미리보기"
                               className="w-32 h-32 object-cover rounded border"
                             />
                           </div>
@@ -982,25 +565,33 @@ export default function MemoPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-2 p-3 bg-gray-700/50 rounded-lg border border-gray-600">
                       <input
                         type="checkbox"
                         id="isPublished"
                         checked={formData.isPublished}
                         onChange={(e) => setFormData(prev => ({ ...prev, isPublished: e.target.checked }))}
+                        className="w-4 h-4 text-amber-400 bg-gray-800 border-gray-600 rounded focus:ring-amber-400 focus:ring-2"
                       />
-                      <label htmlFor="isPublished" className="text-sm">
-                        Publish immediately
+                      <label htmlFor="isPublished" className="text-sm font-medium text-white">
+                        게시하기 (체크 시 메모2 목록에 표시)
                       </label>
                     </div>
-                  </div>
+                    </div>
 
                   <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                      Cancel
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setIsDialogOpen(false)}
+                      onMouseEnter={blockTranslationFeedback}
+                    >
+                      취소
                     </Button>
-                    <Button onClick={handleSubmit}>
-                      {editingContent ? 'Update' : 'Save'}
+                    <Button 
+                      onClick={handleSubmit}
+                      onMouseEnter={blockTranslationFeedback}
+                    >
+                      {editingContent ? '수정' : '저장'}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
@@ -1008,83 +599,236 @@ export default function MemoPage() {
             </div>
           )}
         </div>
+      </div>
+    );
+  }
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {contents.map((content) => (
-            <Card
-              key={content.id}
-              className="bg-gray-800/50 border-2 border-gray-700 hover:border-amber-400/70 hover:bg-gray-800/80 transition-all duration-300 cursor-pointer group"
-              onClick={() => {
-                setSelected(content);
-                blockTranslationFeedback();
-              }}
-            >
-              <CardHeader className="pb-3">
-                {content.imageUrl && (
-                  <div className="mb-3">
-                    <img
-                      src={content.imageUrl}
-                      alt={content.title}
-                      className="w-full h-auto rounded-lg"
+  // List view
+  return (
+    <div className="w-full max-w-4xl mx-auto space-y-6 px-4" onMouseEnter={blockTranslationFeedback}>
+      <div className="text-center mb-8">
+        <h2 className="text-3xl font-bold text-white mb-2" onMouseEnter={blockTranslationFeedback}>Memo2</h2>
+        <p className="text-gray-400">Share your thoughts and ideas</p>
+        {isAuthenticated && (
+          <div className="mt-4">
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button 
+                  onClick={resetForm}
+                  className="gap-2"
+                  onMouseEnter={blockTranslationFeedback}
+                >
+                  <Plus className="h-4 w-4" />
+                  새 메모2 작성
+                </Button>
+              </DialogTrigger>
+              <DialogContent 
+                className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto"
+                onMouseEnter={blockTranslationFeedback}
+              >
+                <DialogHeader>
+                  <DialogTitle>
+                    {editingContent ? '메모2 수정' : '새 메모2 작성'}
+                  </DialogTitle>
+                  <DialogDescription>
+                    새로운 메모2를 작성하세요.
+                  </DialogDescription>
+                </DialogHeader>
+                  
+                <div className="space-y-4">
+                  <div onMouseEnter={blockTranslationFeedback}>
+                    <label htmlFor="title-2" className="block text-sm font-medium mb-2">제목 *</label>
+                    <Input
+                      id="title-2"
+                      name="title"
+                      value={formData.title}
+                      onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                      placeholder="제목을 입력하세요"
+                      onMouseEnter={blockTranslationFeedback}
                     />
                   </div>
-                )}
-                <CardTitle className="text-lg font-semibold text-white group-hover:text-amber-300 transition-colors line-clamp-2" translate="no">
-                  {content.title}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="flex items-center justify-between text-sm text-gray-400">
-                  <span className="flex items-center gap-1">
-                    <User className="w-3 h-3" />
-                    <span translate="no">{content.author}</span>
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Calendar className="w-3 h-3" />
-                    {new Date(content.publishDate).toLocaleDateString()}
-                  </span>
+
+                  <div onMouseEnter={blockTranslationFeedback}>
+                    <label htmlFor="author-2" className="block text-sm font-medium mb-2">작성자 *</label>
+                    <Input
+                      id="author-2"
+                      name="author"
+                      value={formData.author}
+                      onChange={(e) => setFormData(prev => ({ ...prev, author: e.target.value }))}
+                      placeholder="작성자명을 입력하세요"
+                      onMouseEnter={blockTranslationFeedback}
+                    />
+                  </div>
+
+                  <div onMouseEnter={blockTranslationFeedback}>
+                    <label htmlFor="content-2" className="block text-sm font-medium mb-2">내용 *</label>
+                    <Textarea
+                      id="content-2"
+                      name="content"
+                      value={formData.content}
+                      onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
+                      placeholder="내용을 입력하세요 (마크다운 지원)"
+                      rows={10}
+                      onMouseEnter={blockTranslationFeedback}
+                    />
+                  </div>
+
+                  <div onMouseEnter={blockTranslationFeedback}>
+                    <label htmlFor="tags-2" className="block text-sm font-medium mb-2">태그</label>
+                    <Input
+                      id="tags-2"
+                      name="tags"
+                      value={formData.tags}
+                      onChange={(e) => setFormData(prev => ({ ...prev, tags: e.target.value }))}
+                      placeholder="태그를 쉼표로 구분하여 입력하세요"
+                      onMouseEnter={blockTranslationFeedback}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2">대표 이미지 (선택사항)</label>
+                    <div className="space-y-2">
+                      <input
+                        id="image-upload"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageSelect}
+                        className="hidden"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => document.getElementById('image-upload')?.click()}
+                          className="px-3 py-2 text-sm bg-gray-800 border border-gray-600 text-gray-300 hover:border-amber-400 rounded transition-colors"
+                        >
+                          이미지 선택
+                        </button>
+                        {selectedImage && (
+                          <button
+                            type="button"
+                            onClick={handleRemoveImage}
+                            className="px-3 py-2 text-sm bg-red-600 border border-red-600 text-white hover:bg-red-700 rounded transition-colors"
+                          >
+                            제거
+                          </button>
+                        )}
+                      </div>
+                      {imagePreview && (
+                        <div className="mt-2">
+                          <img
+                            src={imagePreview}
+                            alt="미리보기"
+                            className="w-32 h-32 object-cover rounded border"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-2 p-3 bg-gray-700/50 rounded-lg border border-gray-600">
+                    <input
+                      type="checkbox"
+                      id="isPublished"
+                      checked={formData.isPublished}
+                      onChange={(e) => setFormData(prev => ({ ...prev, isPublished: e.target.checked }))}
+                      className="w-4 h-4 text-amber-400 bg-gray-800 border-gray-600 rounded focus:ring-amber-400 focus:ring-2"
+                    />
+                    <label htmlFor="isPublished" className="text-sm font-medium text-white">
+                      게시하기 (체크 시 메모2 목록에 표시)
+                    </label>
+                  </div>
                 </div>
 
-                {isAuthenticated && (
-                  <div 
-                    className="flex items-center gap-2 mt-2" 
-                    onClick={(e) => e.stopPropagation()} 
-                    onKeyDown={(e) => e.key === 'Enter' && e.stopPropagation()}
+                <DialogFooter>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setIsDialogOpen(false)}
                     onMouseEnter={blockTranslationFeedback}
-                    role="button"
-                    tabIndex={0}
                   >
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={createAdminButtonHandler(() => togglePublish(content))}
-                      className="text-gray-400 hover:text-white"
-                      onMouseEnter={blockTranslationFeedback}
-                    >
-                      <EyeOff className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={createAdminButtonHandler(() => handleEdit(content))}
-                      className="text-gray-400 hover:text-white"
-                      onMouseEnter={blockTranslationFeedback}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={createAdminButtonHandler(() => handleDelete(content.id))}
-                      className="text-red-400 hover:text-red-300"
-                      onMouseEnter={blockTranslationFeedback}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                    취소
+                  </Button>
+                  <Button 
+                    onClick={handleSubmit}
+                    onMouseEnter={blockTranslationFeedback}
+                  >
+                    {editingContent ? '수정' : '저장'}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+            </div>
+          )}
+        </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {contents.map((content) => (
+          <Card
+            key={content.id}
+            className="bg-gray-800/50 border-2 border-gray-700 hover:border-amber-400/70 hover:bg-gray-800/80 transition-all duration-300 cursor-pointer group"
+            onClick={() => {
+              setSelected(content);
+              blockTranslationFeedback();
+            }}
+          >
+            <CardHeader className="pb-3">
+              {content.imageUrl && (
+                <div className="mb-3">
+                  <img
+                    src={content.imageUrl}
+                    alt={content.title}
+                    className="w-full h-auto rounded-lg"
+                  />
+                </div>
+              )}
+              <CardTitle className="text-lg font-semibold text-white group-hover:text-amber-300 transition-colors line-clamp-2" translate="no">
+                {content.title}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="flex items-center justify-between text-sm text-gray-400">
+                <span className="flex items-center gap-1">
+                  <User className="w-3 h-3" />
+                  <span translate="no">{content.author}</span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <Calendar className="w-3 h-3" />
+                  {new Date(content.publishDate).toLocaleDateString()}
+                </span>
+              </div>
+
+              {isAuthenticated && (
+                <div className="flex items-center gap-2 mt-2" onClick={(e) => e.stopPropagation()} onMouseEnter={blockTranslationFeedback}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={createAdminButtonHandler(() => togglePublish(content))}
+                    className="text-gray-400 hover:text-white"
+                    onMouseEnter={blockTranslationFeedback}
+                  >
+                    <EyeOff className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={createAdminButtonHandler(() => handleEdit(content))}
+                    className="text-gray-400 hover:text-white"
+                    onMouseEnter={blockTranslationFeedback}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={createAdminButtonHandler(() => handleDelete(content.id))}
+                    className="text-red-400 hover:text-red-300"
+                    onMouseEnter={blockTranslationFeedback}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
           ))}
         </div>
       </div>
